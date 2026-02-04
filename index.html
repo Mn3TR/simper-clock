@@ -3,242 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>极简计时器 Pro - 历史记录修复版</title>
-    
+    <title>极简计时器</title>
     <style>
         :root {
-            --bg: #f2f2f7;
-            --card: #ffffff;
-            --primary: #007AFF;
-            --accent: #34C759;
-            --danger: #FF3B30;
-            --text: #1c1c1e;
-            --secondary-text: #8e8e93;
-            --sidebar-w: 320px;
+            --bg: #f2f2f7; --card: #ffffff; --primary: #007AFF; --accent: #34C759;
+            --danger: #FF3B30; --text: #1c1c1e; --secondary-text: #8e8e93;
         }
+        body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        .top-nav { background: var(--card); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e5ea; z-index: 100; }
+        .nav-logo { font-weight: 800; color: var(--primary); font-size: 1.2rem; letter-spacing: -1px; }
+        .nav-buttons { display: flex; gap: 8px; }
+        .nav-btn { background: #f2f2f7; border: none; padding: 8px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.9rem; }
 
-        body {
-            font-family: -apple-system, system-ui, sans-serif;
-            background-color: var(--bg);
-            margin: 0;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
+        .modal { position: fixed; inset: 0; background: var(--bg); z-index: 1000; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
+        .modal.open { transform: translateY(0); }
+        .modal-header { padding: 15px 20px; background: var(--card); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e5ea; }
+        .modal-body { flex: 1; overflow-y: auto; padding: 20px; max-width: 600px; margin: 0 auto; width: 100%; box-sizing: border-box; }
 
-        /* --- 侧边栏 --- */
-        #sidebar {
-            width: var(--sidebar-w);
-            height: 100%;
-            background: var(--card);
-            border-right: 1px solid #e5e5ea;
-            position: fixed;
-            left: 0; top: 0;
-            transform: translateX(-100%);
-            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #sidebar.open { transform: translateX(0); }
-
-        #overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.2);
-            backdrop-filter: blur(2px);
-            z-index: 1500;
-        }
-        #sidebar.open ~ #overlay { display: block; }
-
-        .sidebar-header {
-            padding: 20px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #f2f2f7;
-        }
-
-        .sidebar-inner { padding: 20px; overflow-y: auto; flex: 1; }
-
-        /* --- 主界面 --- */
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-        }
-
-        .menu-toggle {
-            position: absolute;
-            top: 25px;
-            left: 25px;
-            background: var(--card);
-            border: 1px solid #d1d1d6;
-            padding: 10px 18px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        /* --- 计时组件 --- */
+        .main-content { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
         .timer-wrap { position: relative; width: 280px; height: 280px; }
         .progress-ring__circle { transition: stroke-dashoffset 0.3s linear, stroke 0.3s; stroke-linecap: round; }
         .timer-display { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
-        .time-text { font-size: 4rem; font-weight: 800; display: block; }
+        .time-text { font-size: 4.8rem; font-weight: 800; display: block; letter-spacing: -3px; }
 
-        /* --- 列表与记录项 --- */
-        .section-title { font-size: 0.75rem; color: var(--secondary-text); text-transform: uppercase; margin: 20px 0 10px; font-weight: bold; }
-        .input-item { width: 100%; box-sizing: border-box; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; }
-        .task-card { background: #f8f8fa; padding: 12px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .log-item { font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid #f2f2f7; color: #444; }
-        .log-time { float: right; color: var(--secondary-text); font-size: 0.75rem; }
+        .section-title { font-size: 0.75rem; color: var(--secondary-text); text-transform: uppercase; margin: 20px 0 10px; font-weight: 700; letter-spacing: 1px; }
+        .input-group { background: var(--card); padding: 15px; border-radius: 16px; margin-bottom: 15px; border: 1px solid #eee; position: relative; }
+        .input-item { width: 100%; box-sizing: border-box; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; font-size: 1rem; }
+        
+        .tag-pill { display: inline-block; padding: 6px 12px; border-radius: 10px; background: #e5e5ea; color: #666; font-size: 0.8rem; margin-right: 6px; margin-bottom: 8px; cursor: pointer; }
+        .tag-pill.active { background: var(--primary); color: white; }
+        .tag-badge { background: #E1EFFF; color: var(--primary); padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: bold; }
+
+        .task-card { background: var(--card); padding: 16px; border-radius: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; cursor: pointer; transition: transform 0.1s; }
+        .task-card:active { transform: scale(0.98); }
+        .log-item { background: var(--card); font-size: 0.85rem; padding: 15px; border-radius: 12px; margin-bottom: 8px; border-left: 4px solid var(--accent); }
+        .log-time-row { display: flex; justify-content: space-between; color: var(--secondary-text); font-size: 0.75rem; margin-top: 5px; }
+        .btn-full { width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; font-size: 1rem; }
+        .editing-tip { color: var(--primary); font-size: 0.7rem; margin-bottom: 5px; display: none; }
     </style>
 </head>
 <body>
 
-    <aside id="sidebar">
-        <div class="sidebar-header">
-            <span>配置与历史</span>
-            <button onclick="closeSidebar()" style="background:#eee; border:none; padding:8px 12px; border-radius:8px; cursor:pointer;">收起 ✕</button>
+    <nav class="top-nav">
+        <div class="nav-logo">FOCUS TIMER</div>
+        <div class="nav-buttons">
+            <button class="nav-btn" onclick="openModal('taskModal')">配置</button>
+            <button class="nav-btn" onclick="openModal('logModal')">历史</button>
         </div>
-        <div class="sidebar-inner">
-            <div class="section-title">新建任务</div>
-            <input type="text" id="taskName" class="input-item" placeholder="任务名">
-            <div style="display:flex; gap:10px">
-                <input type="number" id="waitS" class="input-item" placeholder="等待(s)">
-                <input type="number" id="workS" class="input-item" placeholder="计时(s)">
+    </nav>
+
+    <div id="taskModal" class="modal">
+        <div class="modal-header">
+            <h2>任务配置</h2>
+            <button class="nav-btn" onclick="closeModal('taskModal')">完成</button>
+        </div>
+        <div class="modal-body">
+            <div class="section-title">新建/修改任务</div>
+            <div id="editTip" class="editing-tip">✨ 正在编辑现有任务...</div>
+            <div class="input-group">
+                <input type="text" id="taskName" class="input-item" placeholder="任务名 (name)">
+                <input type="text" id="taskTag" class="input-item" placeholder="标签 (tag)">
+                <div style="display:flex; gap:10px">
+                    <input type="number" id="waitS" class="input-item" placeholder="等待 (waitS)">
+                    <input type="number" id="workS" class="input-item" placeholder="执行 (workS)">
+                </div>
+                <button id="saveBtn" class="btn-full" style="background:var(--primary); color:white" onclick="handleCreateOrUpdate()">保存任务</button>
+                <button id="cancelEditBtn" class="nav-btn" style="width:100%; margin-top:10px; display:none" onclick="resetForm()">取消编辑</button>
             </div>
-            <button onclick="saveTask()" style="width:100%; background:var(--primary); color:white; padding:12px; border:none; border-radius:10px; font-weight:600; cursor:pointer">保存任务</button>
 
-            <div class="section-title">我的清单</div>
+            <div class="section-title">筛选</div>
+            <div id="tagFilterBox"></div>
+
+            <div class="section-title">清单列表 (点击任务可编辑)</div>
             <div id="taskList"></div>
-
-            <div class="section-title">历史记录</div>
-            <div id="logList"></div>
-            <button onclick="clearLogs()" style="width:100%; background:none; color:var(--danger); border:1px solid var(--danger); padding:8px; border-radius:8px; cursor:pointer; margin-top:10px; font-size:0.8rem">清空记录</button>
+            
+            <div class="section-title">备份</div>
+            <div style="display:flex; gap:10px">
+                <button class="nav-btn" style="flex:1" onclick="exportJSON('tasks')">导出配置</button>
+                <button class="nav-btn" style="flex:1" onclick="triggerImport('taskImport')">导入配置</button>
+            </div>
+            <input type="file" id="taskImport" style="display:none" accept=".json" onchange="importJSON(event, 'tasks')">
         </div>
-    </aside>
+    </div>
 
-    <div id="overlay" onclick="closeSidebar()"></div>
+    <div id="logModal" class="modal">
+        <div class="modal-header">
+            <h2>执行历史</h2>
+            <button class="nav-btn" onclick="closeModal('logModal')">返回</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex; gap:10px; margin-bottom:20px">
+                <button class="nav-btn" style="flex:1" onclick="exportJSON('logs')">导出历史</button>
+                <button class="nav-btn" style="flex:1" onclick="triggerImport('logImport')">同步记录</button>
+            </div>
+            <input type="file" id="logImport" style="display:none" accept=".json" onchange="importJSON(event, 'logs')">
+            <div id="logList"></div>
+            <button class="btn-full" style="background:none; color:var(--danger); border:1px solid var(--danger); margin-top:20px" onclick="clearLogs()">清空历史数据</button>
+        </div>
+    </div>
 
     <main class="main-content">
-        <button class="menu-toggle" onclick="openSidebar()">☰ 菜单选项</button>
         <div class="timer-wrap">
             <svg width="280" height="280" style="transform: rotate(-90deg)">
-                <circle cx="140" cy="140" r="130" stroke="#e5e5ea" stroke-width="12" fill="none"/>
-                <circle id="progress" cx="140" cy="140" r="130" stroke="var(--primary)" stroke-width="12" fill="none"
+                <circle cx="140" cy="140" r="130" stroke="#e5e5ea" stroke-width="8" fill="none"/>
+                <circle id="progress" cx="140" cy="140" r="130" stroke="var(--primary)" stroke-width="8" fill="none"
                         stroke-dasharray="816.8" stroke-dashoffset="0" class="progress-ring__circle"/>
             </svg>
             <div class="timer-display">
                 <span id="time" class="time-text">00:00</span>
-                <span id="status" style="color:var(--secondary-text)">就绪</span>
+                <span id="status" style="color:var(--secondary-text); font-weight:700">READY</span>
             </div>
         </div>
-        <h3 id="currentName" style="margin-top:30px; color:var(--primary); height: 1.2em;"></h3>
+        <div id="currentInfo" style="margin-top:40px; text-align:center">
+            <h2 id="currentName" style="margin:0; font-size:1.5rem; color:var(--text)"></h2>
+            <div id="currentTag" style="margin-top:8px"></div>
+        </div>
     </main>
 
 <script>
-    // --- 侧边栏开关 ---
-    function openSidebar() { document.getElementById('sidebar').classList.add('open'); }
-    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); }
-
-    // --- 数据持久化 ---
-    let tasks = JSON.parse(localStorage.getItem('pwa_tasks')) || [];
-    let logs = JSON.parse(localStorage.getItem('pwa_logs')) || [];
-
     const circle = document.getElementById('progress');
-    const perimeter = 2 * Math.PI * 130;
+    const perimeter = 816.8;
+    
+    let tasks = JSON.parse(localStorage.getItem('std_timer_v6_tasks')) || [];
+    let logs = JSON.parse(localStorage.getItem('std_timer_v6_logs')) || [];
+    let currentFilter = '全部';
+    let isEditing = false;
+    let oldName = "";
 
-    // --- 渲染逻辑 ---
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); resetForm(); }
+
+    function createTaskObject(name, tag, waitS, workS) {
+        return {
+            name: String(name || "新任务").trim(),
+            tag: String(tag || "默认").trim(),
+            waitS: parseInt(waitS) || 5,
+            workS: parseInt(workS) || 15
+        };
+    }
+
     function render() {
-        // 渲染任务列表
-        const list = document.getElementById('taskList');
-        list.innerHTML = tasks.length ? '' : '<p style="font-size:0.8rem; color:#999">暂无任务</p>';
-        tasks.forEach((t, i) => {
+        const tags = ['全部', ...new Set(tasks.map(t => t.tag))];
+        document.getElementById('tagFilterBox').innerHTML = tags.map(tag => 
+            `<span class="tag-pill ${currentFilter === tag ? 'active' : ''}" onclick="setFilter('${tag}')">${tag}</span>`
+        ).join('');
+
+        const tList = document.getElementById('taskList');
+        const displayTasks = currentFilter === '全部' ? tasks : tasks.filter(t => t.tag === currentFilter);
+        tList.innerHTML = displayTasks.length ? '' : '<p style="color:#999; text-align:center">暂无任务</p>';
+        
+        displayTasks.forEach(t => {
             const div = document.createElement('div');
             div.className = 'task-card';
+            // 点击卡片进入编辑模式
+            div.onclick = (e) => {
+                if(e.target.tagName !== 'BUTTON') fillForm(t);
+            };
             div.innerHTML = `
-                <div><strong>${t.name}</strong><br><small>${t.wait}s + ${t.work}s</small></div>
-                <button onclick="execute(${i})" style="background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:8px; cursor:pointer">执行</button>
+                <div style="flex:1">
+                    <span class="tag-badge">${t.tag}</span><br>
+                    <strong>${t.name}</strong><br>
+                    <small style="color:#8e8e93">等待:${t.waitS}s | 执行:${t.workS}s</small>
+                </div>
+                <div style="display:flex; gap:8px">
+                    <button onclick="runTask('${t.name}')" style="background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700">▶</button>
+                    <button onclick="confirmDelete('${t.name}')" style="background:#f2f2f7; color:var(--danger); border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700">✕</button>
+                </div>
             `;
-            list.appendChild(div);
+            tList.appendChild(div);
         });
 
-        // 渲染历史记录
-        const logBox = document.getElementById('logList');
-        logBox.innerHTML = logs.length ? '' : '<p style="font-size:0.8rem; color:#999">暂无记录</p>';
-        // 只显示最近15条记录
-        logs.slice().reverse().slice(0, 15).forEach(log => {
+        const lList = document.getElementById('logList');
+        lList.innerHTML = logs.length ? '' : '<p style="color:#999; text-align:center">无历史记录</p>';
+        logs.slice().reverse().slice(0, 50).forEach(log => {
             const div = document.createElement('div');
             div.className = 'log-item';
-            div.innerHTML = `<strong>${log.task}</strong> <span class="log-time">${log.at}</span>`;
-            logBox.appendChild(div);
+            div.innerHTML = `
+                <div style="font-weight:700; font-size:1rem; margin-bottom:5px">${log.task}</div>
+                <div class="log-time-row"><span>始: ${log.at}</span></div>
+                <div class="log-time-row"><span>终: ${log.endAt || '--'}</span></div>
+            `;
+            lList.appendChild(div);
         });
     }
 
-    function saveTask() {
-        const name = document.getElementById('taskName').value || "新任务";
-        const wait = parseInt(document.getElementById('waitS').value) || 5;
-        const work = parseInt(document.getElementById('workS').value) || 10;
-        tasks.push({name, wait, work});
-        localStorage.setItem('pwa_tasks', JSON.stringify(tasks));
-        document.getElementById('taskName').value = '';
-        render();
+    // --- 修改功能核心 ---
+    function fillForm(t) {
+        document.getElementById('taskName').value = t.name;
+        document.getElementById('taskTag').value = t.tag;
+        document.getElementById('waitS').value = t.waitS;
+        document.getElementById('workS').value = t.workS;
+        
+        isEditing = true;
+        oldName = t.name;
+        document.getElementById('saveBtn').innerText = "更新任务信息";
+        document.getElementById('saveBtn').style.background = "var(--accent)";
+        document.getElementById('editTip').style.display = "block";
+        document.getElementById('cancelEditBtn').style.display = "block";
+        document.querySelector('.modal-body').scrollTop = 0; // 回滚到顶部方便编辑
     }
 
-    function clearLogs() {
-        if(confirm("确定清空历史记录吗？")) {
-            logs = [];
-            localStorage.setItem('pwa_logs', JSON.stringify(logs));
-            render();
+    function resetForm() {
+        isEditing = false;
+        oldName = "";
+        document.getElementById('taskName').value = '';
+        document.getElementById('taskTag').value = '';
+        document.getElementById('waitS').value = '';
+        document.getElementById('workS').value = '';
+        document.getElementById('saveBtn').innerText = "保存任务";
+        document.getElementById('saveBtn').style.background = "var(--primary)";
+        document.getElementById('editTip').style.display = "none";
+        document.getElementById('cancelEditBtn').style.display = "none";
+    }
+
+    function handleCreateOrUpdate() {
+        const n = document.getElementById('taskName').value.trim();
+        const g = document.getElementById('taskTag').value.trim();
+        const wa = document.getElementById('waitS').value;
+        const wo = document.getElementById('workS').value;
+
+        if(!n) return alert("名称必填");
+
+        const newTask = createTaskObject(n, g, wa, wo);
+
+        if(isEditing) {
+            const index = tasks.findIndex(t => t.name === oldName);
+            if(index !== -1) tasks[index] = newTask;
+            alert("已成功更新任务信息");
+        } else {
+            if(tasks.some(t => t.name === n)) return alert("任务名称已存在");
+            tasks.push(newTask);
+        }
+
+        save();
+        resetForm();
+    }
+
+    function confirmDelete(name) {
+        if(confirm(`确定删除任务 "${name}" 吗？`)) {
+            tasks = tasks.filter(t => t.name !== name);
+            save();
         }
     }
 
-    // --- 计时核心逻辑 ---
-    async function execute(idx) {
-        const t = tasks[idx];
-        closeSidebar();
-        document.getElementById('currentName').innerText = t.name;
-
-        await run(t.wait, "准备中", "var(--primary)", true);
-        await run(t.work, "工作中", "var(--accent)", false);
-
-        // 记录历史
-        logs.push({ task: t.name, at: new Date().toLocaleTimeString() });
-        localStorage.setItem('pwa_logs', JSON.stringify(logs));
-        
-        document.getElementById('status').innerText = "已完成";
-        document.getElementById('currentName').innerText = "";
-        render(); // 重新渲染，历史记录就会出现了
+    function setFilter(tag) { currentFilter = tag; render(); }
+    function save() {
+        localStorage.setItem('std_timer_v6_tasks', JSON.stringify(tasks));
+        localStorage.setItem('std_timer_v6_logs', JSON.stringify(logs));
+        render();
     }
 
-    function run(dur, label, color, isCD) {
+    function triggerImport(id) { document.getElementById(id).click(); }
+    function importJSON(event, type) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                let tCount = 0, lCount = 0;
+                if (type === 'tasks') {
+                    data.forEach(item => {
+                        if (!tasks.some(t => t.name === item.name)) {
+                            tasks.push(createTaskObject(item.name, item.tag, item.waitS, item.workS));
+                            tCount++;
+                        }
+                    });
+                } else {
+                    data.forEach(log => {
+                        if (!tasks.some(t => t.name === log.task)) {
+                            tasks.push(createTaskObject(log.task, "同步导入", 5, 20));
+                            tCount++;
+                        }
+                        if (!logs.some(l => l.at === log.at && l.task === log.task)) {
+                            logs.push(log); lCount++;
+                        }
+                    });
+                }
+                save();
+                alert(`导入完成！`);
+            } catch (err) { alert("文件解析失败"); }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function exportJSON(type) {
+        const data = type === 'tasks' ? tasks : logs;
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const a = document.createElement('a');
+        const time = new Date().toISOString().slice(0,10);
+        a.href = URL.createObjectURL(blob);
+        a.download = `timer_${type}_${time}.json`;
+        a.click();
+    }
+
+    async function runTask(name) {
+        const t = tasks.find(x => x.name === name);
+        if(!t) return;
+        closeModal('taskModal');
+        
+        const startTimeStr = new Date().toLocaleString('zh-CN', { hour12: false });
+        document.getElementById('currentName').innerText = t.name;
+        document.getElementById('currentTag').innerHTML = `<span class="tag-badge">${t.tag}</span>`;
+
+        await startClock(t.waitS, "准备 (WAIT)", "var(--primary)", true);
+        await startClock(t.workS, "执行 (WORK)", "var(--accent)", false);
+
+        const endTimeStr = new Date().toLocaleString('zh-CN', { hour12: false });
+        logs.push({ task: t.name, at: startTimeStr, endAt: endTimeStr });
+        document.getElementById('status').innerText = "DONE";
+        save();
+    }
+
+    function startClock(dur, label, color, isCD) {
         return new Promise(res => {
             let s = isCD ? dur : 0;
             document.getElementById('status').innerText = label;
             circle.style.stroke = color;
-
             const itv = setInterval(() => {
                 isCD ? s-- : s++;
                 document.getElementById('time').innerText = format(s);
-                let p = (isCD ? s : s) / dur * 100;
+                let p = (s / dur) * 100;
                 circle.style.strokeDashoffset = perimeter - (p/100)*perimeter;
                 if((isCD && s<=0) || (!isCD && s>=dur)) { clearInterval(itv); res(); }
             }, 1000);
         });
     }
 
-    function format(s) {
-        return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
+    function format(s) { 
+        return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; 
     }
+    
+    function clearLogs() { if(confirm("清空历史记录？")) { logs = []; save(); } }
 
-    // 初始化加载数据
     render();
 </script>
 </body>
