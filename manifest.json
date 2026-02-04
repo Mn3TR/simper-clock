@@ -1,0 +1,11 @@
+{
+  "short_name": "极简计时",
+  "name": "极简计时",
+  "icons": [
+  ],
+  "start_url": "./",
+  "display": "standalone",
+  "theme_color": "#007AFF",
+  "background_color": "#f2f2f7",
+  "description": "一个支持任务清单、自动保存和记录导出的单页计时应用。"
+}
