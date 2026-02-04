@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="manifest" href="./manifest.json">
-    <title>极简计时</title>
+    <title>极简计时器 Pro - 历史记录修复版</title>
+    
     <style>
         :root {
             --bg: #f2f2f7;
@@ -14,285 +14,232 @@
             --danger: #FF3B30;
             --text: #1c1c1e;
             --secondary-text: #8e8e93;
+            --sidebar-w: 320px;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, system-ui, sans-serif;
             background-color: var(--bg);
-            color: var(--text);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        .app-card {
+        /* --- 侧边栏 --- */
+        #sidebar {
+            width: var(--sidebar-w);
+            height: 100%;
             background: var(--card);
-            width: 100%;
-            max-width: 500px;
-            padding: 2rem;
-            border-radius: 28px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            border-right: 1px solid #e5e5ea;
+            position: fixed;
+            left: 0; top: 0;
+            transform: translateX(-100%);
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            z-index: 2000;
             display: flex;
             flex-direction: column;
-            align-items: center; /* 元素居中 */
-            text-align: center;
         }
 
-        /* 环形进度条居中 */
-        .timer-section {
-            position: relative;
-            width: 220px;
-            height: 220px;
-            margin-bottom: 1.5rem;
+        #sidebar.open { transform: translateX(0); }
+
+        #overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(2px);
+            z-index: 1500;
         }
+        #sidebar.open ~ #overlay { display: block; }
 
-        .progress-ring { transform: rotate(-90deg); }
-        .progress-ring__circle { transition: stroke-dashoffset 0.3s linear, stroke 0.3s; }
-
-        .timer-display {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .time-num { font-size: 3rem; font-weight: 700; display: block; }
-        .status-text { font-size: 0.9rem; color: var(--secondary-text); }
-
-        /* 输入与控制区 */
-        .controls, .task-manager { width: 100%; margin-top: 1rem; }
-
-        .input-group {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 1.5rem;
-            justify-content: center;
-        }
-
-        input {
-            padding: 10px;
-            border: 1px solid #d1d1d6;
-            border-radius: 10px;
-            outline: none;
-            width: 80px;
-        }
-        input#nameInp { width: 140px; }
-
-        .button-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            width: 100%;
-        }
-
-        button {
-            padding: 12px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-outline { background: #e5e5ea; color: var(--text); }
-        .btn-history { background: #f2f2f7; color: var(--primary); margin-top: 10px; width: 100%; }
-
-        button:hover { opacity: 0.8; }
-        button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        /* 任务列表 */
-        .task-list {
-            width: 100%;
-            margin-top: 2rem;
-            max-height: 250px;
-            overflow-y: auto;
-            border-top: 1px solid #eee;
-            padding-top: 1rem;
-        }
-
-        .task-item {
+        .sidebar-header {
+            padding: 20px;
+            font-weight: bold;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
-            background: #f8f8fa;
-            border-radius: 12px;
-            margin-bottom: 8px;
-            border: 2px solid transparent;
+            border-bottom: 1px solid #f2f2f7;
         }
 
-        .task-item.running { border-color: var(--primary); background: #f0f7ff; }
+        .sidebar-inner { padding: 20px; overflow-y: auto; flex: 1; }
 
-        .task-info { text-align: left; }
-        .task-actions { display: flex; gap: 5px; }
-        
-        .btn-small { padding: 6px 10px; font-size: 0.8rem; }
-        .btn-run { background: var(--accent); color: white; }
-        .btn-del { background: #ffebeb; color: var(--danger); }
+        /* --- 主界面 --- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
 
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #d1d1d6; border-radius: 10px; }
+        .menu-toggle {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            background: var(--card);
+            border: 1px solid #d1d1d6;
+            padding: 10px 18px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* --- 计时组件 --- */
+        .timer-wrap { position: relative; width: 280px; height: 280px; }
+        .progress-ring__circle { transition: stroke-dashoffset 0.3s linear, stroke 0.3s; stroke-linecap: round; }
+        .timer-display { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .time-text { font-size: 4rem; font-weight: 800; display: block; }
+
+        /* --- 列表与记录项 --- */
+        .section-title { font-size: 0.75rem; color: var(--secondary-text); text-transform: uppercase; margin: 20px 0 10px; font-weight: bold; }
+        .input-item { width: 100%; box-sizing: border-box; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; }
+        .task-card { background: #f8f8fa; padding: 12px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .log-item { font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid #f2f2f7; color: #444; }
+        .log-time { float: right; color: var(--secondary-text); font-size: 0.75rem; }
     </style>
 </head>
 <body>
 
-<div class="app-card">
-    <div class="timer-section">
-        <svg class="progress-ring" width="220" height="220">
-            <circle stroke="#eee" stroke-width="10" fill="transparent" r="100" cx="110" cy="110"/>
-            <circle id="progressCircle" stroke="var(--primary)" stroke-width="10" 
-                    stroke-dasharray="628.3" stroke-dashoffset="0" 
-                    fill="transparent" r="100" cx="110" cy="110" class="progress-ring__circle"/>
-        </svg>
-        <div class="timer-display">
-            <span id="display" class="time-num">00:00</span>
-            <span id="statusLabel" class="status-text">就绪</span>
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            <span>配置与历史</span>
+            <button onclick="closeSidebar()" style="background:#eee; border:none; padding:8px 12px; border-radius:8px; cursor:pointer;">收起 ✕</button>
         </div>
-    </div>
+        <div class="sidebar-inner">
+            <div class="section-title">新建任务</div>
+            <input type="text" id="taskName" class="input-item" placeholder="任务名">
+            <div style="display:flex; gap:10px">
+                <input type="number" id="waitS" class="input-item" placeholder="等待(s)">
+                <input type="number" id="workS" class="input-item" placeholder="计时(s)">
+            </div>
+            <button onclick="saveTask()" style="width:100%; background:var(--primary); color:white; padding:12px; border:none; border-radius:10px; font-weight:600; cursor:pointer">保存任务</button>
 
-    <div class="task-manager">
-        <div class="input-group">
-            <input type="text" id="nameInp" placeholder="任务名">
-            <input type="number" id="cdInp" placeholder="等待">
-            <input type="number" id="swInp" placeholder="计时">
-            <button class="btn-primary" onclick="addTask()">添加</button>
-        </div>
+            <div class="section-title">我的清单</div>
+            <div id="taskList"></div>
 
-        <div class="button-grid">
-            <button id="exportTasks" class="btn-outline" onclick="exportJSON('tasks')">导出配置</button>
-            <button id="exportLogs" class="btn-outline" onclick="exportJSON('logs')">导出记录</button>
+            <div class="section-title">历史记录</div>
+            <div id="logList"></div>
+            <button onclick="clearLogs()" style="width:100%; background:none; color:var(--danger); border:1px solid var(--danger); padding:8px; border-radius:8px; cursor:pointer; margin-top:10px; font-size:0.8rem">清空记录</button>
         </div>
-    </div>
+    </aside>
 
-    <div id="taskList" class="task-list">
+    <div id="overlay" onclick="closeSidebar()"></div>
+
+    <main class="main-content">
+        <button class="menu-toggle" onclick="openSidebar()">☰ 菜单选项</button>
+        <div class="timer-wrap">
+            <svg width="280" height="280" style="transform: rotate(-90deg)">
+                <circle cx="140" cy="140" r="130" stroke="#e5e5ea" stroke-width="12" fill="none"/>
+                <circle id="progress" cx="140" cy="140" r="130" stroke="var(--primary)" stroke-width="12" fill="none"
+                        stroke-dasharray="816.8" stroke-dashoffset="0" class="progress-ring__circle"/>
+            </svg>
+            <div class="timer-display">
+                <span id="time" class="time-text">00:00</span>
+                <span id="status" style="color:var(--secondary-text)">就绪</span>
+            </div>
         </div>
-</div>
+        <h3 id="currentName" style="margin-top:30px; color:var(--primary); height: 1.2em;"></h3>
+    </main>
 
 <script>
-    let tasks = JSON.parse(localStorage.getItem('spa_tasks')) || [];
-    let logs = JSON.parse(localStorage.getItem('spa_logs')) || [];
-    let timer = null;
-    const circle = document.getElementById('progressCircle');
-    const circumference = 2 * Math.PI * 100;
+    // --- 侧边栏开关 ---
+    function openSidebar() { document.getElementById('sidebar').classList.add('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); }
 
-    function init() {
-        renderTasks();
-        setProgress(0, 'var(--primary)');
-    }
+    // --- 数据持久化 ---
+    let tasks = JSON.parse(localStorage.getItem('pwa_tasks')) || [];
+    let logs = JSON.parse(localStorage.getItem('pwa_logs')) || [];
 
-    function renderTasks() {
-        const listEl = document.getElementById('taskList');
-        listEl.innerHTML = tasks.length === 0 ? '<p style="color:#8e8e93">暂无任务</p>' : '';
-        tasks.forEach((task, index) => {
+    const circle = document.getElementById('progress');
+    const perimeter = 2 * Math.PI * 130;
+
+    // --- 渲染逻辑 ---
+    function render() {
+        // 渲染任务列表
+        const list = document.getElementById('taskList');
+        list.innerHTML = tasks.length ? '' : '<p style="font-size:0.8rem; color:#999">暂无任务</p>';
+        tasks.forEach((t, i) => {
             const div = document.createElement('div');
-            div.className = 'task-item';
-            div.id = `task-${index}`;
+            div.className = 'task-card';
             div.innerHTML = `
-                <div class="task-info">
-                    <strong>${task.name}</strong><br>
-                    <small>${task.cd}s / ${task.sw}s</small>
-                </div>
-                <div class="task-actions">
-                    <button class="btn-small btn-run" onclick="runSingleTask(${index})">运行</button>
-                    <button class="btn-small btn-del" onclick="removeTask(${index})">删除</button>
-                </div>
+                <div><strong>${t.name}</strong><br><small>${t.wait}s + ${t.work}s</small></div>
+                <button onclick="execute(${i})" style="background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:8px; cursor:pointer">执行</button>
             `;
-            listEl.appendChild(div);
+            list.appendChild(div);
         });
-        localStorage.setItem('spa_tasks', JSON.stringify(tasks));
-        localStorage.setItem('spa_logs', JSON.stringify(logs));
+
+        // 渲染历史记录
+        const logBox = document.getElementById('logList');
+        logBox.innerHTML = logs.length ? '' : '<p style="font-size:0.8rem; color:#999">暂无记录</p>';
+        // 只显示最近15条记录
+        logs.slice().reverse().slice(0, 15).forEach(log => {
+            const div = document.createElement('div');
+            div.className = 'log-item';
+            div.innerHTML = `<strong>${log.task}</strong> <span class="log-time">${log.at}</span>`;
+            logBox.appendChild(div);
+        });
     }
 
-    function addTask() {
-        const name = document.getElementById('nameInp').value || "任务";
-        const cd = parseInt(document.getElementById('cdInp').value) || 5;
-        const sw = parseInt(document.getElementById('swInp').value) || 10;
-        tasks.push({ name, cd, sw });
-        renderTasks();
+    function saveTask() {
+        const name = document.getElementById('taskName').value || "新任务";
+        const wait = parseInt(document.getElementById('waitS').value) || 5;
+        const work = parseInt(document.getElementById('workS').value) || 10;
+        tasks.push({name, wait, work});
+        localStorage.setItem('pwa_tasks', JSON.stringify(tasks));
+        document.getElementById('taskName').value = '';
+        render();
     }
 
-    function removeTask(i) {
-        tasks.splice(i, 1);
-        renderTasks();
+    function clearLogs() {
+        if(confirm("确定清空历史记录吗？")) {
+            logs = [];
+            localStorage.setItem('pwa_logs', JSON.stringify(logs));
+            render();
+        }
     }
 
-    function setProgress(percent, color) {
-        const offset = circumference - (percent / 100) * circumference;
-        circle.style.strokeDashoffset = offset;
-        circle.style.stroke = color;
-    }
+    // --- 计时核心逻辑 ---
+    async function execute(idx) {
+        const t = tasks[idx];
+        closeSidebar();
+        document.getElementById('currentName').innerText = t.name;
 
-    function formatTime(s) {
-        return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
-    }
-
-    async function runSingleTask(index) {
-        if (timer) clearInterval(timer);
-        const task = tasks[index];
-        const taskEl = document.getElementById(`task-${index}`);
-        
-        // UI 状态
-        document.querySelectorAll('.task-item').forEach(el => el.classList.remove('running'));
-        taskEl.classList.add('running');
-        disableAllButtons(true);
-
-        // 执行逻辑
-        await startTimer(task.cd, "等待中...", "var(--primary)", true);
-        await startTimer(task.sw, "进行中...", "var(--accent)", false);
+        await run(t.wait, "准备中", "var(--primary)", true);
+        await run(t.work, "工作中", "var(--accent)", false);
 
         // 记录历史
-        logs.push({
-            taskName: task.name,
-            timestamp: new Date().toLocaleString(),
-            duration: task.sw
-        });
+        logs.push({ task: t.name, at: new Date().toLocaleTimeString() });
+        localStorage.setItem('pwa_logs', JSON.stringify(logs));
         
-        document.getElementById('statusLabel').innerText = "已完成";
-        taskEl.classList.remove('running');
-        disableAllButtons(false);
-        renderTasks(); // 更新本地存储
+        document.getElementById('status').innerText = "已完成";
+        document.getElementById('currentName').innerText = "";
+        render(); // 重新渲染，历史记录就会出现了
     }
 
-    function startTimer(duration, label, color, isCountdown) {
-        return new Promise(resolve => {
-            let count = isCountdown ? duration : 0;
-            document.getElementById('statusLabel').innerText = label;
-            document.getElementById('display').innerText = formatTime(count);
-            
-            timer = setInterval(() => {
-                isCountdown ? count-- : count++;
-                document.getElementById('display').innerText = formatTime(count);
-                
-                let percent = isCountdown ? (count / duration) * 100 : (count / duration) * 100;
-                setProgress(percent, color);
+    function run(dur, label, color, isCD) {
+        return new Promise(res => {
+            let s = isCD ? dur : 0;
+            document.getElementById('status').innerText = label;
+            circle.style.stroke = color;
 
-                if ((isCountdown && count <= 0) || (!isCountdown && count >= duration)) {
-                    clearInterval(timer);
-                    resolve();
-                }
+            const itv = setInterval(() => {
+                isCD ? s-- : s++;
+                document.getElementById('time').innerText = format(s);
+                let p = (isCD ? s : s) / dur * 100;
+                circle.style.strokeDashoffset = perimeter - (p/100)*perimeter;
+                if((isCD && s<=0) || (!isCD && s>=dur)) { clearInterval(itv); res(); }
             }, 1000);
         });
     }
 
-    function disableAllButtons(disabled) {
-        document.querySelectorAll('button').forEach(btn => btn.disabled = disabled);
+    function format(s) {
+        return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
     }
 
-    function exportJSON(type) {
-        const data = type === 'tasks' ? tasks : logs;
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${type}_${new Date().getTime()}.json`;
-        a.click();
-    }
-
-    init();
+    // 初始化加载数据
+    render();
 </script>
-
 </body>
 </html>
