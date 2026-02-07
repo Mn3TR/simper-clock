@@ -3,286 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>极简计时器 Pro Max (含JSON备份)</title>
-    <style>
-        :root {
-            --bg: #f2f2f7; --card: #ffffff; --primary: #007AFF; --accent: #34C759;
-            --danger: #FF3B30; --text: #1c1c1e; --secondary-text: #8e8e93;
-        }
-        body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        
-        /* 导航与基础 */
-        .top-nav { background: var(--card); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e5ea; z-index: 100; }
-        .nav-logo { font-weight: 800; color: var(--primary); font-size: 1.1rem; letter-spacing: -1px; }
-        .nav-buttons { display: flex; gap: 6px; }
-        .nav-btn { background: #f2f2f7; border: none; padding: 8px 12px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
-
-        .modal { position: fixed; inset: 0; background: var(--bg); z-index: 1000; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
-        .modal.open { transform: translateY(0); }
-        .modal-header { padding: 15px 20px; background: var(--card); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e5ea; }
-        .modal-body { flex: 1; overflow-y: auto; padding: 20px; max-width: 600px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-
-        /* 统计图表 */
-        .stats-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
-        .summary-card { background: var(--card); padding: 15px; border-radius: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-        .summary-value { font-size: 1.4rem; font-weight: 800; color: var(--primary); }
-        
-        .chart-container { background: var(--card); border-radius: 20px; padding: 20px; }
-        .chart-row { margin-bottom: 15px; }
-        .chart-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; }
-        .chart-bar-bg { background: #f2f2f7; height: 14px; border-radius: 7px; overflow: hidden; }
-        .chart-bar-fill { height: 100%; border-radius: 7px; transition: width 0.8s ease; background: var(--primary); }
-
-        /* 计时器核心 */
-        .main-content { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
-        .timer-wrap { position: relative; width: 280px; height: 280px; }
-        .progress-ring__circle { transition: stroke-dashoffset 0.3s linear, stroke 0.3s; stroke-linecap: round; }
-        .timer-display { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
-        .time-text { font-size: 4.8rem; font-weight: 800; letter-spacing: -3px; }
-
-        /* 通用组件 */
-        .section-title { font-size: 0.75rem; color: var(--secondary-text); text-transform: uppercase; margin: 20px 0 10px; font-weight: 700; }
-        .task-card { background: var(--card); padding: 15px; border-radius: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
-        .btn-full { width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; margin-top: 10px; }
-        .tag-badge { background: #E1EFFF; color: var(--primary); padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: bold; }
-        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
-    </style>
+    <title>Focus</title>
+    <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
 
     <nav class="top-nav">
         <div class="nav-logo">FOCUS PRO</div>
         <div class="nav-buttons">
-            <button class="nav-btn" onclick="openModal('statsModal')">📊 统计</button>
-            <button class="nav-btn" onclick="openModal('taskModal')">⚙️ 配置</button>
-            <button class="nav-btn" onclick="openModal('logModal')">📜 历史</button>
+            <button class="nav-btn" data-open="statsModal">📊 统计</button>
+            <button class="nav-btn" data-open="taskModal">⚙️ 配置</button>
+            <button class="nav-btn" data-open="logModal">📜 历史</button>
         </div>
     </nav>
-
-    <div id="statsModal" class="modal">
-        <div class="modal-header">
-            <h2>数据洞察</h2>
-            <button class="nav-btn" onclick="closeModal('statsModal')">关闭</button>
-        </div>
-        <div class="modal-body">
-            <div class="stats-summary">
-                <div class="summary-card"><div class="summary-value" id="totalCount">0次</div><small>总次数</small></div>
-                <div class="summary-card"><div class="summary-value" id="totalTime">00:00</div><small>专注时长</small></div>
-            </div>
-            
-            <div class="section-title">时长分布比较</div>
-            <div id="chartBox" class="chart-container"></div>
-
-            <div class="section-title">数据管理 (JSON)</div>
-            <div class="action-grid">
-                <button class="nav-btn" style="background:#34C759; color:white" onclick="exportFullData()">💾 导出JSON</button>
-                <button class="nav-btn" style="background:#5856D6; color:white" onclick="document.getElementById('importInput').click()">📂 导入JSON</button>
-            </div>
-            <input type="file" id="importInput" style="display:none" accept=".json" onchange="importFullData(event)">
-            <p style="font-size:0.7rem; color:var(--secondary-text); text-align:center; margin-top:10px">
-                导出的文件包含所有任务配置和历史记录
-            </p>
-        </div>
-    </div>
-
-    <div id="taskModal" class="modal">
-        <div class="modal-header">
-            <h2>任务管理</h2>
-            <button class="nav-btn" onclick="closeModal('taskModal')">关闭</button>
-        </div>
-        <div class="modal-body">
-            <div class="section-title">添加/编辑任务</div>
-            <div style="background:white; padding:15px; border-radius:16px">
-                <input type="text" id="taskName" class="nav-btn" style="width:100%; text-align:left; margin-bottom:8px; background:#f9f9f9" placeholder="任务名称">
-                <div style="display:flex; gap:8px">
-                    <input type="number" id="waitS" class="nav-btn" style="flex:1; background:#f9f9f9" placeholder="准备(秒)">
-                    <input type="number" id="workS" class="nav-btn" style="flex:1; background:#f9f9f9" placeholder="执行(秒)">
-                </div>
-                <button id="saveBtn" class="btn-full" style="background:var(--primary); color:white" onclick="handleSave()">保存任务</button>
-            </div>
-            <div class="section-title">任务列表</div>
-            <div id="taskList"></div>
-        </div>
-    </div>
-
-    <div id="logModal" class="modal">
-        <div class="modal-header">
-            <h2>最近记录</h2>
-            <button class="nav-btn" onclick="closeModal('logModal')">关闭</button>
-        </div>
-        <div class="modal-body">
-            <div id="logList"></div>
-            <button class="btn-full" style="color:var(--danger); background:none; border:1px solid var(--danger)" onclick="clearLogs()">清空所有记录</button>
-        </div>
-    </div>
 
     <main class="main-content">
         <div class="timer-wrap">
             <svg width="280" height="280" style="transform: rotate(-90deg)">
                 <circle cx="140" cy="140" r="130" stroke="#e5e5ea" stroke-width="8" fill="none"/>
                 <circle id="progress" cx="140" cy="140" r="130" stroke="var(--primary)" stroke-width="8" fill="none"
-                        stroke-dasharray="816.8" stroke-dashoffset="0" class="progress-ring__circle"/>
+                        class="progress-ring__circle"/>
             </svg>
             <div class="timer-display">
                 <span id="time" class="time-text">00:00</span>
                 <span id="status" style="color:var(--secondary-text); font-weight:700">READY</span>
             </div>
         </div>
-        <div id="currentInfo" style="margin-top:40px; text-align:center">
-            <h2 id="currentName" style="margin:0; color:var(--text)">选择一个任务</h2>
+        <div id="currentInfo" style="margin-top:40px; text-align:center; padding: 0 20px;">
+            <h2 id="currentName" class="truncate" style="margin:0; color:var(--text)">选择任务开始</h2>
+            <div id="currentTag" style="margin-top:8px"></div>
         </div>
     </main>
 
-<script>
-    // --- 音效模块 ---
-    let audioCtx = null;
-    function playSound(type) {
-        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.frequency.value = type === 'end' ? 880 : 440;
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
-    }
-
-    // --- 数据中心 ---
-    let tasks = JSON.parse(localStorage.getItem('focus_tasks')) || [];
-    let logs = JSON.parse(localStorage.getItem('focus_logs')) || [];
-    const perimeter = 816.8;
-
-    function save() {
-        localStorage.setItem('focus_tasks', JSON.stringify(tasks));
-        localStorage.setItem('focus_logs', JSON.stringify(logs));
-    }
-
-    // --- JSON 导入导出 ---
-    function exportFullData() {
-        const data = { tasks, logs, exportAt: new Date().toISOString() };
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `timer_backup_${new Date().toLocaleDateString()}.json`;
-        a.click();
-    }
-
-    function importFullData(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            try {
-                const data = JSON.parse(event.target.result);
-                if(data.tasks && data.logs) {
-                    if(confirm("导入将覆盖现有数据，确定吗？")) {
-                        tasks = data.tasks;
-                        logs = data.logs;
-                        save();
-                        location.reload();
-                    }
-                }
-            } catch(err) { alert("文件格式错误"); }
-        };
-        reader.readAsText(file);
-    }
-
-    // --- 页面逻辑 ---
-    function openModal(id) { 
-        document.getElementById(id).classList.add('open'); 
-        if(id === 'statsModal') renderStats();
-        if(id === 'taskModal') renderTasks();
-        if(id === 'logModal') renderLogs();
-    }
-    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-    function renderStats() {
-        const totalSec = logs.reduce((s, l) => s + l.duration, 0);
-        document.getElementById('totalCount').innerText = logs.length + '次';
-        document.getElementById('totalTime').innerText = format(totalSec);
-
-        const stats = {};
-        logs.forEach(l => stats[l.task] = (stats[l.task] || 0) + l.duration);
-        const sorted = Object.entries(stats).sort((a,b) => b[1] - a[1]);
-        const max = sorted[0]?.[1] || 1;
-
-        document.getElementById('chartBox').innerHTML = sorted.map(([name, val], i) => `
-            <div class="chart-row">
-                <div class="chart-label"><span>${name}</span><strong>${val}s</strong></div>
-                <div class="chart-bar-bg">
-                    <div class="chart-bar-fill" style="width:${(val/max*100)}%; background:hsl(${i*40}, 70%, 50%)"></div>
+    <div id="statsModal" class="modal">
+        <div class="modal-header">
+            <h2>效率洞察</h2>
+            <button class="nav-btn" data-close>关闭</button>
+        </div>
+        <div class="modal-body">
+            <div class="stats-summary">
+                <div class="summary-card">
+                    <div class="summary-value" id="totalCount">0次</div>
+                    <small>累计专注</small>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value" id="totalTime">00:00</div>
+                    <small>专注总时长</small>
                 </div>
             </div>
-        `).join('') || '<p style="text-align:center;color:#999">暂无统计数据</p>';
-    }
-
-    function renderTasks() {
-        document.getElementById('taskList').innerHTML = tasks.map(t => `
-            <div class="task-card">
-                <div><strong>${t.name}</strong><br><small>${t.waitS}s + ${t.workS}s</small></div>
-                <div style="display:flex; gap:5px">
-                    <button class="nav-btn" style="background:var(--accent); color:white" onclick="runTask('${t.name}')">▶</button>
-                    <button class="nav-btn" onclick="deleteTask('${t.name}')">✕</button>
+            
+            <div class="section-title">任务时长分布 (秒)</div>
+            <div id="chartBox" class="chart-container">
                 </div>
+
+            <div class="section-title">数据备份与恢复</div>
+            <div class="action-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button id="btnExport" class="nav-btn" style="background:#34C759; color:white">💾 导出备份</button>
+                <button class="nav-btn" style="background:#5856D6; color:white" onclick="document.getElementById('importInput').click()">📂 导入数据</button>
             </div>
-        `).join('');
-    }
+            <input type="file" id="importInput" style="display:none" accept=".json">
+            <p style="font-size:0.7rem; color:var(--secondary-text); text-align:center; margin-top:12px">
+                导入操作将使用备份文件完全覆盖当前数据。
+            </p>
+        </div>
+    </div>
 
-    function renderLogs() {
-        document.getElementById('logList').innerHTML = logs.slice().reverse().slice(0,20).map(l => `
-            <div class="task-card" style="font-size:0.8rem">
-                <div><strong>${l.task}</strong></div>
-                <div style="color:var(--secondary-text)">${l.at.split(' ')[1]} | ${l.duration}s</div>
+    <div id="taskModal" class="modal">
+        <div class="modal-header">
+            <h2>任务设置</h2>
+            <button class="nav-btn" data-close>关闭</button>
+        </div>
+        <div class="modal-body">
+            <div class="section-title">新建专注任务</div>
+            <div class="input-card" style="background:white; padding:15px; border-radius:16px; border:1px solid #eee">
+                <input type="text" id="taskName" class="input-field" placeholder="任务名称 (如：阅读代码)">
+                <div style="display:flex; gap:10px; margin-top:10px">
+                    <div style="flex:1">
+                        <label style="font-size:0.7rem; color:var(--secondary-text)">准备 (秒)</label>
+                        <input type="number" id="waitS" class="input-field" value="5">
+                    </div>
+                    <div style="flex:1">
+                        <label style="font-size:0.7rem; color:var(--secondary-text)">执行 (秒)</label>
+                        <input type="number" id="workS" class="input-field" value="1500">
+                    </div>
+                </div>
+                <button id="btnSaveTask" class="nav-btn" style="width:100%; margin-top:15px; background:var(--primary); color:white; padding:12px; font-weight:700">保存并添加到列表</button>
             </div>
-        `).join('');
-    }
 
-    function handleSave() {
-        const n = document.getElementById('taskName').value;
-        const wa = parseInt(document.getElementById('waitS').value) || 0;
-        const wo = parseInt(document.getElementById('workS').value) || 1;
-        if(!n) return;
-        tasks.push({name:n, waitS:wa, workS:wo});
-        save(); renderTasks();
-    }
+            <div class="section-title">我的清单</div>
+            <div id="taskList">
+                </div>
+        </div>
+    </div>
 
-    async function runTask(name) {
-        const t = tasks.find(x => x.name === name);
-        closeModal('taskModal');
-        document.getElementById('currentName').innerText = t.name;
-        
-        if(t.waitS > 0) {
-            await startClock(t.waitS, "准备", "var(--primary)", true);
-            playSound('wait');
-        }
-        await startClock(t.workS, "专注中", "var(--accent)", false);
-        playSound('end');
-        
-        logs.push({ task: t.name, duration: t.workS, at: new Date().toLocaleString() });
-        save();
-        document.getElementById('status').innerText = "完成";
-    }
+    <div id="logModal" class="modal">
+        <div class="modal-header">
+            <h2>执行历史</h2>
+            <button class="nav-btn" data-close>关闭</button>
+        </div>
+        <div class="modal-body">
+            <div id="logList">
+                </div>
+            <button id="btnClearLogs" class="nav-btn" style="width:100%; color:var(--danger); border:1px solid var(--danger); margin-top:20px; background:none">清空所有历史</button>
+        </div>
+    </div>
 
-    function startClock(dur, label, color, isCD) {
-        return new Promise(res => {
-            let s = isCD ? dur : 0;
-            document.getElementById('status').innerText = label;
-            document.getElementById('progress').style.stroke = color;
-            const itv = setInterval(() => {
-                isCD ? s-- : s++;
-                document.getElementById('time').innerText = format(s);
-                document.getElementById('progress').style.strokeDashoffset = perimeter - (s/dur * perimeter);
-                if((isCD && s<=0) || (!isCD && s>=dur)) { clearInterval(itv); res(); }
-            }, 1000);
-        });
-    }
+    <script type="module" src="/src/main.js"></script>
 
-    function format(s) {
-        return Math.floor(s/60).toString().padStart(2,'0') + ':' + (s%60).toString().padStart(2,'0');
-    }
-    
-    function deleteTask(name) { tasks = tasks.filter(t => t.name !== name); save(); renderTasks(); }
-    function clearLogs() { if(confirm("清空历史数据？")) { logs = []; save(); renderLogs(); } }
-</script>
 </body>
 </html>
