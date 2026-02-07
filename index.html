@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>极简计时器</title>
+    <title>极简计时器 Pro Max (含JSON备份)</title>
     <style>
         :root {
             --bg: #f2f2f7; --card: #ffffff; --primary: #007AFF; --accent: #34C759;
@@ -11,95 +11,108 @@
         }
         body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
+        /* 导航与基础 */
         .top-nav { background: var(--card); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e5ea; z-index: 100; }
-        .nav-logo { font-weight: 800; color: var(--primary); font-size: 1.2rem; letter-spacing: -1px; }
-        .nav-buttons { display: flex; gap: 8px; }
-        .nav-btn { background: #f2f2f7; border: none; padding: 8px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.9rem; }
+        .nav-logo { font-weight: 800; color: var(--primary); font-size: 1.1rem; letter-spacing: -1px; }
+        .nav-buttons { display: flex; gap: 6px; }
+        .nav-btn { background: #f2f2f7; border: none; padding: 8px 12px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
 
         .modal { position: fixed; inset: 0; background: var(--bg); z-index: 1000; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
         .modal.open { transform: translateY(0); }
         .modal-header { padding: 15px 20px; background: var(--card); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e5ea; }
         .modal-body { flex: 1; overflow-y: auto; padding: 20px; max-width: 600px; margin: 0 auto; width: 100%; box-sizing: border-box; }
 
+        /* 统计图表 */
+        .stats-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .summary-card { background: var(--card); padding: 15px; border-radius: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .summary-value { font-size: 1.4rem; font-weight: 800; color: var(--primary); }
+        
+        .chart-container { background: var(--card); border-radius: 20px; padding: 20px; }
+        .chart-row { margin-bottom: 15px; }
+        .chart-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; }
+        .chart-bar-bg { background: #f2f2f7; height: 14px; border-radius: 7px; overflow: hidden; }
+        .chart-bar-fill { height: 100%; border-radius: 7px; transition: width 0.8s ease; background: var(--primary); }
+
+        /* 计时器核心 */
         .main-content { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
         .timer-wrap { position: relative; width: 280px; height: 280px; }
         .progress-ring__circle { transition: stroke-dashoffset 0.3s linear, stroke 0.3s; stroke-linecap: round; }
         .timer-display { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
-        .time-text { font-size: 4.8rem; font-weight: 800; display: block; letter-spacing: -3px; }
+        .time-text { font-size: 4.8rem; font-weight: 800; letter-spacing: -3px; }
 
-        .section-title { font-size: 0.75rem; color: var(--secondary-text); text-transform: uppercase; margin: 20px 0 10px; font-weight: 700; letter-spacing: 1px; }
-        .input-group { background: var(--card); padding: 15px; border-radius: 16px; margin-bottom: 15px; border: 1px solid #eee; position: relative; }
-        .input-item { width: 100%; box-sizing: border-box; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; font-size: 1rem; }
-        
-        .tag-pill { display: inline-block; padding: 6px 12px; border-radius: 10px; background: #e5e5ea; color: #666; font-size: 0.8rem; margin-right: 6px; margin-bottom: 8px; cursor: pointer; }
-        .tag-pill.active { background: var(--primary); color: white; }
+        /* 通用组件 */
+        .section-title { font-size: 0.75rem; color: var(--secondary-text); text-transform: uppercase; margin: 20px 0 10px; font-weight: 700; }
+        .task-card { background: var(--card); padding: 15px; border-radius: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
+        .btn-full { width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; margin-top: 10px; }
         .tag-badge { background: #E1EFFF; color: var(--primary); padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: bold; }
-
-        .task-card { background: var(--card); padding: 16px; border-radius: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; cursor: pointer; transition: transform 0.1s; }
-        .task-card:active { transform: scale(0.98); }
-        .log-item { background: var(--card); font-size: 0.85rem; padding: 15px; border-radius: 12px; margin-bottom: 8px; border-left: 4px solid var(--accent); }
-        .log-time-row { display: flex; justify-content: space-between; color: var(--secondary-text); font-size: 0.75rem; margin-top: 5px; }
-        .btn-full { width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; font-size: 1rem; }
-        .editing-tip { color: var(--primary); font-size: 0.7rem; margin-bottom: 5px; display: none; }
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <nav class="top-nav">
-        <div class="nav-logo">FOCUS TIMER</div>
+        <div class="nav-logo">FOCUS PRO</div>
         <div class="nav-buttons">
-            <button class="nav-btn" onclick="openModal('taskModal')">配置</button>
-            <button class="nav-btn" onclick="openModal('logModal')">历史</button>
+            <button class="nav-btn" onclick="openModal('statsModal')">📊 统计</button>
+            <button class="nav-btn" onclick="openModal('taskModal')">⚙️ 配置</button>
+            <button class="nav-btn" onclick="openModal('logModal')">📜 历史</button>
         </div>
     </nav>
 
-    <div id="taskModal" class="modal">
+    <div id="statsModal" class="modal">
         <div class="modal-header">
-            <h2>任务配置</h2>
-            <button class="nav-btn" onclick="closeModal('taskModal')">完成</button>
+            <h2>数据洞察</h2>
+            <button class="nav-btn" onclick="closeModal('statsModal')">关闭</button>
         </div>
         <div class="modal-body">
-            <div class="section-title">新建/修改任务</div>
-            <div id="editTip" class="editing-tip">✨ 正在编辑现有任务...</div>
-            <div class="input-group">
-                <input type="text" id="taskName" class="input-item" placeholder="任务名 (name)">
-                <input type="text" id="taskTag" class="input-item" placeholder="标签 (tag)">
-                <div style="display:flex; gap:10px">
-                    <input type="number" id="waitS" class="input-item" placeholder="等待 (waitS)">
-                    <input type="number" id="workS" class="input-item" placeholder="执行 (workS)">
-                </div>
-                <button id="saveBtn" class="btn-full" style="background:var(--primary); color:white" onclick="handleCreateOrUpdate()">保存任务</button>
-                <button id="cancelEditBtn" class="nav-btn" style="width:100%; margin-top:10px; display:none" onclick="resetForm()">取消编辑</button>
+            <div class="stats-summary">
+                <div class="summary-card"><div class="summary-value" id="totalCount">0次</div><small>总次数</small></div>
+                <div class="summary-card"><div class="summary-value" id="totalTime">00:00</div><small>专注时长</small></div>
             </div>
-
-            <div class="section-title">筛选</div>
-            <div id="tagFilterBox"></div>
-
-            <div class="section-title">清单列表 (点击任务可编辑)</div>
-            <div id="taskList"></div>
             
-            <div class="section-title">备份</div>
-            <div style="display:flex; gap:10px">
-                <button class="nav-btn" style="flex:1" onclick="exportJSON('tasks')">导出配置</button>
-                <button class="nav-btn" style="flex:1" onclick="triggerImport('taskImport')">导入配置</button>
+            <div class="section-title">时长分布比较</div>
+            <div id="chartBox" class="chart-container"></div>
+
+            <div class="section-title">数据管理 (JSON)</div>
+            <div class="action-grid">
+                <button class="nav-btn" style="background:#34C759; color:white" onclick="exportFullData()">💾 导出JSON</button>
+                <button class="nav-btn" style="background:#5856D6; color:white" onclick="document.getElementById('importInput').click()">📂 导入JSON</button>
             </div>
-            <input type="file" id="taskImport" style="display:none" accept=".json" onchange="importJSON(event, 'tasks')">
+            <input type="file" id="importInput" style="display:none" accept=".json" onchange="importFullData(event)">
+            <p style="font-size:0.7rem; color:var(--secondary-text); text-align:center; margin-top:10px">
+                导出的文件包含所有任务配置和历史记录
+            </p>
+        </div>
+    </div>
+
+    <div id="taskModal" class="modal">
+        <div class="modal-header">
+            <h2>任务管理</h2>
+            <button class="nav-btn" onclick="closeModal('taskModal')">关闭</button>
+        </div>
+        <div class="modal-body">
+            <div class="section-title">添加/编辑任务</div>
+            <div style="background:white; padding:15px; border-radius:16px">
+                <input type="text" id="taskName" class="nav-btn" style="width:100%; text-align:left; margin-bottom:8px; background:#f9f9f9" placeholder="任务名称">
+                <div style="display:flex; gap:8px">
+                    <input type="number" id="waitS" class="nav-btn" style="flex:1; background:#f9f9f9" placeholder="准备(秒)">
+                    <input type="number" id="workS" class="nav-btn" style="flex:1; background:#f9f9f9" placeholder="执行(秒)">
+                </div>
+                <button id="saveBtn" class="btn-full" style="background:var(--primary); color:white" onclick="handleSave()">保存任务</button>
+            </div>
+            <div class="section-title">任务列表</div>
+            <div id="taskList"></div>
         </div>
     </div>
 
     <div id="logModal" class="modal">
         <div class="modal-header">
-            <h2>执行历史</h2>
-            <button class="nav-btn" onclick="closeModal('logModal')">返回</button>
+            <h2>最近记录</h2>
+            <button class="nav-btn" onclick="closeModal('logModal')">关闭</button>
         </div>
         <div class="modal-body">
-            <div style="display:flex; gap:10px; margin-bottom:20px">
-                <button class="nav-btn" style="flex:1" onclick="exportJSON('logs')">导出历史</button>
-                <button class="nav-btn" style="flex:1" onclick="triggerImport('logImport')">同步记录</button>
-            </div>
-            <input type="file" id="logImport" style="display:none" accept=".json" onchange="importJSON(event, 'logs')">
             <div id="logList"></div>
-            <button class="btn-full" style="background:none; color:var(--danger); border:1px solid var(--danger); margin-top:20px" onclick="clearLogs()">清空历史数据</button>
+            <button class="btn-full" style="color:var(--danger); background:none; border:1px solid var(--danger)" onclick="clearLogs()">清空所有记录</button>
         </div>
     </div>
 
@@ -116,229 +129,160 @@
             </div>
         </div>
         <div id="currentInfo" style="margin-top:40px; text-align:center">
-            <h2 id="currentName" style="margin:0; font-size:1.5rem; color:var(--text)"></h2>
-            <div id="currentTag" style="margin-top:8px"></div>
+            <h2 id="currentName" style="margin:0; color:var(--text)">选择一个任务</h2>
         </div>
     </main>
 
 <script>
-    const circle = document.getElementById('progress');
+    // --- 音效模块 ---
+    let audioCtx = null;
+    function playSound(type) {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.value = type === 'end' ? 880 : 440;
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+    }
+
+    // --- 数据中心 ---
+    let tasks = JSON.parse(localStorage.getItem('focus_tasks')) || [];
+    let logs = JSON.parse(localStorage.getItem('focus_logs')) || [];
     const perimeter = 816.8;
-    
-    let tasks = JSON.parse(localStorage.getItem('std_timer_v6_tasks')) || [];
-    let logs = JSON.parse(localStorage.getItem('std_timer_v6_logs')) || [];
-    let currentFilter = '全部';
-    let isEditing = false;
-    let oldName = "";
 
-    function openModal(id) { document.getElementById(id).classList.add('open'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('open'); resetForm(); }
-
-    function createTaskObject(name, tag, waitS, workS) {
-        return {
-            name: String(name || "新任务").trim(),
-            tag: String(tag || "默认").trim(),
-            waitS: parseInt(waitS) || 5,
-            workS: parseInt(workS) || 15
-        };
-    }
-
-    function render() {
-        const tags = ['全部', ...new Set(tasks.map(t => t.tag))];
-        document.getElementById('tagFilterBox').innerHTML = tags.map(tag => 
-            `<span class="tag-pill ${currentFilter === tag ? 'active' : ''}" onclick="setFilter('${tag}')">${tag}</span>`
-        ).join('');
-
-        const tList = document.getElementById('taskList');
-        const displayTasks = currentFilter === '全部' ? tasks : tasks.filter(t => t.tag === currentFilter);
-        tList.innerHTML = displayTasks.length ? '' : '<p style="color:#999; text-align:center">暂无任务</p>';
-        
-        displayTasks.forEach(t => {
-            const div = document.createElement('div');
-            div.className = 'task-card';
-            // 点击卡片进入编辑模式
-            div.onclick = (e) => {
-                if(e.target.tagName !== 'BUTTON') fillForm(t);
-            };
-            div.innerHTML = `
-                <div style="flex:1">
-                    <span class="tag-badge">${t.tag}</span><br>
-                    <strong>${t.name}</strong><br>
-                    <small style="color:#8e8e93">等待:${t.waitS}s | 执行:${t.workS}s</small>
-                </div>
-                <div style="display:flex; gap:8px">
-                    <button onclick="runTask('${t.name}')" style="background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700">▶</button>
-                    <button onclick="confirmDelete('${t.name}')" style="background:#f2f2f7; color:var(--danger); border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700">✕</button>
-                </div>
-            `;
-            tList.appendChild(div);
-        });
-
-        const lList = document.getElementById('logList');
-        lList.innerHTML = logs.length ? '' : '<p style="color:#999; text-align:center">无历史记录</p>';
-        logs.slice().reverse().slice(0, 50).forEach(log => {
-            const div = document.createElement('div');
-            div.className = 'log-item';
-            div.innerHTML = `
-                <div style="font-weight:700; font-size:1rem; margin-bottom:5px">${log.task}</div>
-                <div class="log-time-row"><span>始: ${log.at}</span></div>
-                <div class="log-time-row"><span>终: ${log.endAt || '--'}</span></div>
-            `;
-            lList.appendChild(div);
-        });
-    }
-
-    // --- 修改功能核心 ---
-    function fillForm(t) {
-        document.getElementById('taskName').value = t.name;
-        document.getElementById('taskTag').value = t.tag;
-        document.getElementById('waitS').value = t.waitS;
-        document.getElementById('workS').value = t.workS;
-        
-        isEditing = true;
-        oldName = t.name;
-        document.getElementById('saveBtn').innerText = "更新任务信息";
-        document.getElementById('saveBtn').style.background = "var(--accent)";
-        document.getElementById('editTip').style.display = "block";
-        document.getElementById('cancelEditBtn').style.display = "block";
-        document.querySelector('.modal-body').scrollTop = 0; // 回滚到顶部方便编辑
-    }
-
-    function resetForm() {
-        isEditing = false;
-        oldName = "";
-        document.getElementById('taskName').value = '';
-        document.getElementById('taskTag').value = '';
-        document.getElementById('waitS').value = '';
-        document.getElementById('workS').value = '';
-        document.getElementById('saveBtn').innerText = "保存任务";
-        document.getElementById('saveBtn').style.background = "var(--primary)";
-        document.getElementById('editTip').style.display = "none";
-        document.getElementById('cancelEditBtn').style.display = "none";
-    }
-
-    function handleCreateOrUpdate() {
-        const n = document.getElementById('taskName').value.trim();
-        const g = document.getElementById('taskTag').value.trim();
-        const wa = document.getElementById('waitS').value;
-        const wo = document.getElementById('workS').value;
-
-        if(!n) return alert("名称必填");
-
-        const newTask = createTaskObject(n, g, wa, wo);
-
-        if(isEditing) {
-            const index = tasks.findIndex(t => t.name === oldName);
-            if(index !== -1) tasks[index] = newTask;
-            alert("已成功更新任务信息");
-        } else {
-            if(tasks.some(t => t.name === n)) return alert("任务名称已存在");
-            tasks.push(newTask);
-        }
-
-        save();
-        resetForm();
-    }
-
-    function confirmDelete(name) {
-        if(confirm(`确定删除任务 "${name}" 吗？`)) {
-            tasks = tasks.filter(t => t.name !== name);
-            save();
-        }
-    }
-
-    function setFilter(tag) { currentFilter = tag; render(); }
     function save() {
-        localStorage.setItem('std_timer_v6_tasks', JSON.stringify(tasks));
-        localStorage.setItem('std_timer_v6_logs', JSON.stringify(logs));
-        render();
+        localStorage.setItem('focus_tasks', JSON.stringify(tasks));
+        localStorage.setItem('focus_logs', JSON.stringify(logs));
     }
 
-    function triggerImport(id) { document.getElementById(id).click(); }
-    function importJSON(event, type) {
-        const file = event.target.files[0];
-        if (!file) return;
+    // --- JSON 导入导出 ---
+    function exportFullData() {
+        const data = { tasks, logs, exportAt: new Date().toISOString() };
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `timer_backup_${new Date().toLocaleDateString()}.json`;
+        a.click();
+    }
+
+    function importFullData(e) {
+        const file = e.target.files[0];
+        if(!file) return;
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function(event) {
             try {
-                const data = JSON.parse(e.target.result);
-                let tCount = 0, lCount = 0;
-                if (type === 'tasks') {
-                    data.forEach(item => {
-                        if (!tasks.some(t => t.name === item.name)) {
-                            tasks.push(createTaskObject(item.name, item.tag, item.waitS, item.workS));
-                            tCount++;
-                        }
-                    });
-                } else {
-                    data.forEach(log => {
-                        if (!tasks.some(t => t.name === log.task)) {
-                            tasks.push(createTaskObject(log.task, "同步导入", 5, 20));
-                            tCount++;
-                        }
-                        if (!logs.some(l => l.at === log.at && l.task === log.task)) {
-                            logs.push(log); lCount++;
-                        }
-                    });
+                const data = JSON.parse(event.target.result);
+                if(data.tasks && data.logs) {
+                    if(confirm("导入将覆盖现有数据，确定吗？")) {
+                        tasks = data.tasks;
+                        logs = data.logs;
+                        save();
+                        location.reload();
+                    }
                 }
-                save();
-                alert(`导入完成！`);
-            } catch (err) { alert("文件解析失败"); }
-            event.target.value = '';
+            } catch(err) { alert("文件格式错误"); }
         };
         reader.readAsText(file);
     }
 
-    function exportJSON(type) {
-        const data = type === 'tasks' ? tasks : logs;
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-        const a = document.createElement('a');
-        const time = new Date().toISOString().slice(0,10);
-        a.href = URL.createObjectURL(blob);
-        a.download = `timer_${type}_${time}.json`;
-        a.click();
+    // --- 页面逻辑 ---
+    function openModal(id) { 
+        document.getElementById(id).classList.add('open'); 
+        if(id === 'statsModal') renderStats();
+        if(id === 'taskModal') renderTasks();
+        if(id === 'logModal') renderLogs();
+    }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    function renderStats() {
+        const totalSec = logs.reduce((s, l) => s + l.duration, 0);
+        document.getElementById('totalCount').innerText = logs.length + '次';
+        document.getElementById('totalTime').innerText = format(totalSec);
+
+        const stats = {};
+        logs.forEach(l => stats[l.task] = (stats[l.task] || 0) + l.duration);
+        const sorted = Object.entries(stats).sort((a,b) => b[1] - a[1]);
+        const max = sorted[0]?.[1] || 1;
+
+        document.getElementById('chartBox').innerHTML = sorted.map(([name, val], i) => `
+            <div class="chart-row">
+                <div class="chart-label"><span>${name}</span><strong>${val}s</strong></div>
+                <div class="chart-bar-bg">
+                    <div class="chart-bar-fill" style="width:${(val/max*100)}%; background:hsl(${i*40}, 70%, 50%)"></div>
+                </div>
+            </div>
+        `).join('') || '<p style="text-align:center;color:#999">暂无统计数据</p>';
+    }
+
+    function renderTasks() {
+        document.getElementById('taskList').innerHTML = tasks.map(t => `
+            <div class="task-card">
+                <div><strong>${t.name}</strong><br><small>${t.waitS}s + ${t.workS}s</small></div>
+                <div style="display:flex; gap:5px">
+                    <button class="nav-btn" style="background:var(--accent); color:white" onclick="runTask('${t.name}')">▶</button>
+                    <button class="nav-btn" onclick="deleteTask('${t.name}')">✕</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderLogs() {
+        document.getElementById('logList').innerHTML = logs.slice().reverse().slice(0,20).map(l => `
+            <div class="task-card" style="font-size:0.8rem">
+                <div><strong>${l.task}</strong></div>
+                <div style="color:var(--secondary-text)">${l.at.split(' ')[1]} | ${l.duration}s</div>
+            </div>
+        `).join('');
+    }
+
+    function handleSave() {
+        const n = document.getElementById('taskName').value;
+        const wa = parseInt(document.getElementById('waitS').value) || 0;
+        const wo = parseInt(document.getElementById('workS').value) || 1;
+        if(!n) return;
+        tasks.push({name:n, waitS:wa, workS:wo});
+        save(); renderTasks();
     }
 
     async function runTask(name) {
         const t = tasks.find(x => x.name === name);
-        if(!t) return;
         closeModal('taskModal');
-        
-        const startTimeStr = new Date().toLocaleString('zh-CN', { hour12: false });
         document.getElementById('currentName').innerText = t.name;
-        document.getElementById('currentTag').innerHTML = `<span class="tag-badge">${t.tag}</span>`;
-
-        await startClock(t.waitS, "准备 (WAIT)", "var(--primary)", true);
-        await startClock(t.workS, "执行 (WORK)", "var(--accent)", false);
-
-        const endTimeStr = new Date().toLocaleString('zh-CN', { hour12: false });
-        logs.push({ task: t.name, at: startTimeStr, endAt: endTimeStr });
-        document.getElementById('status').innerText = "DONE";
+        
+        if(t.waitS > 0) {
+            await startClock(t.waitS, "准备", "var(--primary)", true);
+            playSound('wait');
+        }
+        await startClock(t.workS, "专注中", "var(--accent)", false);
+        playSound('end');
+        
+        logs.push({ task: t.name, duration: t.workS, at: new Date().toLocaleString() });
         save();
+        document.getElementById('status').innerText = "完成";
     }
 
     function startClock(dur, label, color, isCD) {
         return new Promise(res => {
             let s = isCD ? dur : 0;
             document.getElementById('status').innerText = label;
-            circle.style.stroke = color;
+            document.getElementById('progress').style.stroke = color;
             const itv = setInterval(() => {
                 isCD ? s-- : s++;
                 document.getElementById('time').innerText = format(s);
-                let p = (s / dur) * 100;
-                circle.style.strokeDashoffset = perimeter - (p/100)*perimeter;
+                document.getElementById('progress').style.strokeDashoffset = perimeter - (s/dur * perimeter);
                 if((isCD && s<=0) || (!isCD && s>=dur)) { clearInterval(itv); res(); }
             }, 1000);
         });
     }
 
-    function format(s) { 
-        return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; 
+    function format(s) {
+        return Math.floor(s/60).toString().padStart(2,'0') + ':' + (s%60).toString().padStart(2,'0');
     }
     
-    function clearLogs() { if(confirm("清空历史记录？")) { logs = []; save(); } }
-
-    render();
+    function deleteTask(name) { tasks = tasks.filter(t => t.name !== name); save(); renderTasks(); }
+    function clearLogs() { if(confirm("清空历史数据？")) { logs = []; save(); renderLogs(); } }
 </script>
 </body>
 </html>
